@@ -2,6 +2,8 @@
  * 
  */
 
+import static org.junit.Assert.*;
+
 import java.util.concurrent.TimeUnit;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
@@ -13,7 +15,11 @@ import org.openqa.selenium.firefox.FirefoxProfile;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runners.Parameterized.Parameters;
@@ -26,7 +32,7 @@ import org.junit.runners.Parameterized.Parameters;
  */
 public class Annotation {
 
-	static WebDriver driver;
+	private static WebDriver driver;
 	static	Actions actions;
 	WebDriverWait wait;
 	static String contactButton=".//button[contains(text(),'Contact Us')]";
@@ -47,8 +53,9 @@ public class Annotation {
 
 
 	}
-	@BeforeClass
-	public static void init(){
+	@Before
+	public void init(){
+
 		driver =  new FirefoxDriver();
 		driver.manage().window().maximize();
 		actions = new Actions(driver);
@@ -56,30 +63,41 @@ public class Annotation {
 		driver.get("http://error-check-staging.nlp.unbabel.com/");
 	}
 
-	public static WebElement find(String by, String text){
+	public static WebElement find(String by, String text) throws Exception{
 		WebElement element = null;
 		int retry=0;
-		while(retry<10 && element == null){
+		while(retry<15 && element == null){
 			try {
 				Thread.sleep(1000);
 				if (by=="xpath"){
 					element = driver.findElement(By.xpath(text));
 				}else if (by=="id"){
 					element = driver.findElement(By.id(text));
+				}else{
+					throw new Exception("Check method invocation " + by + " - " +text);
 				}
 
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				retry++;
+				System.out.println(retry + "not found - retry in 2.5s");
 				e.printStackTrace();
+				try {
+					Thread.sleep(2500);
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+
+				}
 			}
 		}
 
+		if(element == null){throw new Exception("NOT FOUND ELEMENT");}
 		return element;
+
 
 	}
 
-	public static void login(){
+	public static void login() throws Exception{
 		find("xpath", signInButton).click();
 		find("id",usernameId).sendKeys(username);
 		find("id",pwId).sendKeys(pw);
@@ -87,7 +105,7 @@ public class Annotation {
 	}
 
 
-	public static void selectBatch(int batch){
+	public static void selectBatch(int batch) throws Exception{
 		batch=batch*2;
 		find("xpath",".//tbody/tr["+batch+"]/td[1]/a").click();
 	}
@@ -100,12 +118,12 @@ public class Annotation {
 			actions.release();
 			actions.release(driver.findElement(By.xpath("//*[@id=\"segments\"]/div["+batchannotation+"]/div[1]"))).perform();
 		}catch(Exception exception){
-
+			//strange behavior annotation only got recognized after exception, this was the way I found to deal with it.
 			;
 		}
 	}
 
-	public static void finalizeAnnotation(String action){
+	public static void finalizeAnnotation(String action) throws Exception{
 		if(action=="clear"){
 			find("id","exit").click();
 		}else{
@@ -119,40 +137,66 @@ public class Annotation {
 	 * @param args
 	 */
 	@Test
-	public void test() {
+	public void testA() {
 		// TODO Auto-generated method stub
-		Annotation a = new Annotation();
+		try{
+			login();
+			selectBatch(5);
+			createAnnotation(1);
+			String QT21 = find("xpath", "/html/body/div/div[1]/div/div[1]/li[2]").getText();
+			System.out.println(QT21);
+			selectError("False Friend");
+			selectSeverity(1);
+			finalizeAnnotation("add");
+			assertFalse(QT21.equals(find("xpath", "/html/body/div/div[1]/div/div[1]/li[2]").getText()));
+		}
+		catch(Exception e){
+			e.printStackTrace();
+
+		}
 
 
-		login();
-		selectBatch(2);
-		createAnnotation(3);
-		selectError("False Friend");
-		selectSeverity(2);
-		finalizeAnnotation("add");
+	}
+	
+	@Test
+	public void testB() {
+		try{
+			driver.get("http://error-check-staging.nlp.unbabel.com/");
+			login();
+			selectBatch(6);
+			createAnnotation(3);
+			String QT21 = find("xpath", "/html/body/div/div[1]/div/div[1]/li[2]").getText();
+			System.out.println(QT21);
+			selectError("False Friend");
+			selectSeverity(1);
+			finalizeAnnotation("add");
+			assertFalse(QT21.equals(find("xpath", "/html/body/div/div[1]/div/div[1]/li[2]").getText()));
+		}	
+
+		catch(Exception e){
+			e.printStackTrace();
+
+		}
 
 
 
 	}
 
-	private static void selectSeverity(int severity) {
+	private static void selectSeverity(int severity) throws Exception {
 		find("xpath","//*[@id=\"annotation-tools-container\"]/span/li["+severity+"]/input").click();
 
 	}
 
-	private static void selectError(String errorType) {
+	private static void selectError(String errorType) throws Exception {
 		int seconds = 2000;
 		int retry =0;
-		System.out.println(find("id","error-type-btn").getText() + retry);
+
 
 
 		while(find("id","error-type-btn").getText().equals(errorType)==false && retry < 5){
-			System.out.println(find("id","error-type-btn").getText() + " - " +errorType );
-			System.out.println(find("id","error-type-btn").getText().equals(errorType));
 			try{
 
 				driver.findElement(By.id("error-type-btn")).click();
-
 				Thread.sleep(seconds);
 				actions.moveToElement(find("id","error-type-btn"));
 				actions.moveToElement(driver.findElement(By.id("error-type-btn"))).moveToElement(driver.findElement(By.xpath(".//span[contains(text(),'"+errorType+"')]"))).click().build().perform();
@@ -168,10 +212,10 @@ public class Annotation {
 
 	}
 
-
-		public void finalize(){
-			driver.close();
-		}
+	@After
+	public void fin(){
+		driver.quit();
+	}
 
 
 }
