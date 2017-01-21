@@ -2,6 +2,8 @@
 
 ## 3 - Automation 
 
+#### ***PLEASE FIND GUIDE.DOCX it has images embebed*** ##
+
 ### Steps to Run
 1 - Go to http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html  and download java jdk accordingly with you system.
 
